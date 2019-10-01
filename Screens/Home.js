@@ -15,9 +15,9 @@ export default class Home extends Component {
       this._getData();
   }
 
-  _storeData = async () => {
+  _storeData = async (valueToBeSaved) => {
     try {
-      await AsyncStorage.setItem('name', this.state.word)
+      await AsyncStorage.setItem('name', valueToBeSaved)
     } catch (e) {
       Alert.alert("Error",e);
     }
@@ -26,7 +26,7 @@ export default class Home extends Component {
   _getData = async () => {
     try {
       const value = await AsyncStorage.getItem('name')
-      if(value !== null) {
+      if(value !== null && value !=='') {
         this.setState({savedWord:value})
       }
     } catch(e) {
@@ -38,14 +38,15 @@ export default class Home extends Component {
       this.setState({word:text});
   }
   _resetText=()=>{
-      this.setState({word:''});
+      this._storeData('');
+      this.setState({word:'', savedWord:''});
   }
   _navigateToList=()=>{
       this.props.navigation.navigate('ListOfContacts');
   }
   _saveToAsyncStorage=()=>{
       if(this.state.word!==''){
-        this._storeData();
+        this._storeData(this.state.word);
         Alert.alert("storage success","name saved successfully");
       }
   }
