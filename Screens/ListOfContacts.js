@@ -1,10 +1,10 @@
 import React, { Component } from 'react';
-import { View, Text, Alert, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, Alert, StyleSheet, Dimensions, TouchableOpacity, AsyncStorage } from 'react-native';
 import Axios from 'axios';
 import { Icon } from 'react-native-elements';
 import { ScrollView } from 'react-native-gesture-handler';
 import Spinner from 'react-native-loading-spinner-overlay';
-import AsyncStorage from '@react-native-community/async-storage';
+//import AsyncStorage from '@react-native-community/async-storage';
 
 export default class ListOfContacts extends Component {
     static navigationOptions = ({ navigation }) => {
@@ -23,19 +23,16 @@ export default class ListOfContacts extends Component {
     }
     _storeData = async (keyOfSavedItem, valueToBeSaved) => {
         try {
-            await AsyncStorage.setItem(keyOfSavedItem, JSON.stringify(valueToBeSaved));
+            await AsyncStorage.setItem(keyOfSavedItem, valueToBeSaved);
         } catch (e) {
             Alert.alert("Error", e);
         }
     }
     _getData = async (keyToBeRetrieved) => {
         try {
-            let value = await AsyncStorage.getItem(keyToBeRetrieved);
-            if (value !== null && value !== []) {
-                //console.warn(JSON.parse(value));
-                const returnedValue = JSON.parse(value);
-                // console.warn(JSON.stringify(returnedValue['_55'], null, 2));
-                return  returnedValue;
+            const returnedValue = await AsyncStorage.getItem(keyToBeRetrieved);
+            if (returnedValue !== null && returnedValue!==[] && returnedValue!== undefined ) {
+                return  JSON.parse(returnedValue);
             }
         } catch (e) {
             Alert.alert("Error", e);
@@ -48,7 +45,7 @@ export default class ListOfContacts extends Component {
                 <Icon name="shopping-cart" color="#59009A" size={32} style={{ zIndex: -10 }} />
                 {cartItems.length > 0 &&
                     <View style={{ width: 20, height: 20, borderRadius: 10, justifyContent: 'center', alignItems: 'center', backgroundColor: 'red', position: 'absolute', zIndex: 10, top: 0, }}>
-                        <Text style={{ fontSize: 12, color: "white", fontWeight: "800" }}>{cartItems.length}</Text>
+                        <Text style={{ fontSize: 12, color: "white", fontWeight: "800" }}>{JSON.stringify(cartItems.length, null, 2)}</Text>
                     </View>
                 }
             </TouchableOpacity>
@@ -57,21 +54,18 @@ export default class ListOfContacts extends Component {
     componentDidMount() {
         //AsyncStorage.removeItem('cartItems');
         const cartFromStorage = this._getData('cartItems');
-        this.setState({ isLoading: true, cartItems: cartFromStorage });
-        this.props.navigation.setParams({ renderCart: this._renderCart, cartItems: cartFromStorage });
+        this.setState({isLoading:true})
         Axios.get('https://jsonplaceholder.typicode.com/users')
             .then(response => {
                 this.setState({ isLoading: false, users:response.data });
-                //this.props.navigation.setParams({cartItems: this.state.cartItems["_55"]});
-                console.warn(JSON.stringify(this.state.cartItems["_55"], null, 2));
+                this.setState({cartItems:cartFromStorage["_55"]});
+                this.props.navigation.setParams({ renderCart: this._renderCart, cartItems:cartFromStorage["_55"]});
+                console.warn(JSON.stringify(this.state.cartItems, null, 2));
             })
             .catch(error => {
                 this.setState({ isLoading: false })
                 Alert.alert('Error', error);
             })
-    }
-    componentWillUnmount(){
-        this._storeData('cartItems',this.state.cartItems);
     }
     _renderLine = (label, value) => {
         return (
@@ -87,7 +81,7 @@ export default class ListOfContacts extends Component {
         if (!isIncluded) {
             currentCart.push(user);
             this.props.navigation.setParams({ cartItems: currentCart });
-            this._storeData('cartItems', currentCart);
+            this._storeData('cartItems', JSON.stringify(currentCart));
             this.setState({ cartItems: currentCart });
             Alert.alert('Confirmation', 'User ' + user.name + ' is added to cart Successfully..'); 
         }
@@ -102,7 +96,7 @@ export default class ListOfContacts extends Component {
         let currentCart = [...this.state.cartItems];
         let cartAfterDelete = currentCart.filter(item=> item.id !== user.id);
         this.props.navigation.setParams({ cartItems: cartAfterDelete });
-        this._storeData('cartItems', cartAfterDelete);
+        this._storeData('cartItems', JSON.stringify(cartAfterDelete));
         this.setState({cartItems: cartAfterDelete});
         Alert.alert('Confirmation', 'User '+ user.name + ' is removed from cart succsessfully ...');
     }
@@ -110,6 +104,7 @@ export default class ListOfContacts extends Component {
         let isInCart = (item)=>{
             return item.id === user.id;
         };
+        let showRemoveBtn = this.state.cartItems.length>0 ? this.state.cartItems.some((item)=>isInCart(item)):false
         return (
             <View key={user.id} style={styles.cardContainer}>
                 {this._renderLine("User ID :", user.id)}
@@ -120,15 +115,13 @@ export default class ListOfContacts extends Component {
                 {this._renderLine("Website :", user.website)}
                 {this._renderLine("Company :", user.company.name)}
                 <View style={styles.buttonContainer}>
-                    <TouchableOpacity onPress={() => this._addToCart(user)} style={styles.button}>
-                        <Text style={styles.buttonText}>Add to Cart</Text>
+                    <TouchableOpacity onPress={() => this._addToCart(user)} style={[styles.button, {backgroundColor:'#59009A'}]}>
+                        <Text style={[styles.buttonText, {color:'white'}]}>Add to Cart</Text>
                     </TouchableOpacity>
-                </View>
-
-                <View style={styles.buttonContainer}>
-                    <TouchableOpacity disabled={this.state.cartItems.length>0 ? !this.state.cartItems.some(()=>isInCart(user)):true} onPress={() => this._removeFromCart(user)} style={styles.button}>
-                        <Text style={styles.buttonText}>remove from cart</Text>
-                    </TouchableOpacity>
+                    {showRemoveBtn && 
+                        <TouchableOpacity onPress={() => this._removeFromCart(user)} style={styles.button}>
+                            <Text style={styles.buttonText}>remove from cart</Text>
+                        </TouchableOpacity>}
                 </View>
             </View>
         )
@@ -208,13 +201,14 @@ const styles = StyleSheet.create({
         borderTopWidth: 1,
         width: Dimensions.get('window').width - 48,
         alignItems: 'center',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-evenly',
+        flexDirection:'row',
         paddingVertical: 10
     },
     button: {
         height: 40,
-        padding: 8,
-        borderRadius: 20,
+        padding:8,
+        borderRadius: 10,
         borderColor: "#59009A",
         borderWidth: 1
     },

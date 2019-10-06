@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Dimensions, Alert } from 'react-native';
-import AsyncStorage from '@react-native-community/async-storage';
+import { View, Text, TextInput, Button, StyleSheet, Dimensions, Alert, AsyncStorage } from 'react-native';
+//import AsyncStorage from '@react-native-community/async-storage';
 
 export default class Home extends Component {
   static navigationOptions = ({ navigation }) => {
